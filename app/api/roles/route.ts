@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdminAuth } from '@/lib/auth-middleware'
+import { withReadPermission, withWritePermission } from '@/lib/auth-middleware'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
-export const GET = withAdminAuth(async (req: NextRequest) => {
+export const GET = withReadPermission('/roles', async (req: NextRequest) => {
   try {
     const roles = await prisma.role.findMany({
       include: {
@@ -15,16 +16,16 @@ export const GET = withAdminAuth(async (req: NextRequest) => {
       }
     })
 
-    return NextResponse.json(roles)
+    return NextResponse.json(createSuccessResponse(roles, 'Roles fetched successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to fetch roles' },
+      createErrorResponse('Failed to fetch roles', 'Internal server error'),
       { status: 500 }
     )
   }
 })
 
-export const POST = withAdminAuth(async (req: NextRequest) => {
+export const POST = withWritePermission('/roles', async (req: NextRequest) => {
   try {
     const { name, description } = await req.json()
 
@@ -35,10 +36,10 @@ export const POST = withAdminAuth(async (req: NextRequest) => {
       }
     })
 
-    return NextResponse.json(role)
+    return NextResponse.json(createSuccessResponse(role, 'Role created successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to create role' },
+      createErrorResponse('Failed to create role', 'Internal server error'),
       { status: 500 }
     )
   }

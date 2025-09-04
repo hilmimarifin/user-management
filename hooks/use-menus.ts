@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
+import { Menu } from '@/types'
 
 export function useMenus() {
   return useQuery({
     queryKey: ['menus'],
-    queryFn: () => apiClient.get('/menus'),
+    queryFn: () => apiClient.get<Menu[]>('/menus'),
   })
 }
 

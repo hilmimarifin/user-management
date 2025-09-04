@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { generateTokens } from '@/lib/jwt'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        createErrorResponse('Invalid credentials', 'Authentication failed'),
         { status: 401 }
       )
     }
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     if (!isValidPassword) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        createErrorResponse('Invalid credentials', 'Authentication failed'),
         { status: 401 }
       )
     }
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
       roleId: user.roleId
     })
 
-    const response = NextResponse.json({
+    const response = NextResponse.json(createSuccessResponse({
       user: {
         id: user.id,
         email: user.email,
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
         role: user.role
       },
       accessToken
-    })
+    }, 'Login successful'))
 
     // Set refresh token as httpOnly cookie
     response.cookies.set('refreshToken', refreshToken, {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      createErrorResponse('Internal server error', 'Login failed'),
       { status: 500 }
     )
   }

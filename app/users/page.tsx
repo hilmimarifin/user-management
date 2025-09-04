@@ -1,13 +1,14 @@
-'use client'
+"use client";
 
 import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/use-users'
+import { User as UserType } from '@/types'
 import { UserForm } from '@/components/forms/user-form'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Modal } from '@/components/ui/modal'
+import { DataTable } from '@/components/ui/data-table'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Plus, Edit, Trash } from 'lucide-react'
@@ -15,9 +16,12 @@ import { useAuthStore } from '@/store/auth-store'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { ColumnDef } from '@tanstack/react-table'
+
+type User = UserType
 
 export default function UsersPage() {
-  const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const { user } = useAuthStore()
   const router = useRouter()
@@ -27,54 +31,103 @@ export default function UsersPage() {
   const updateUser = useUpdateUser()
   const deleteUser = useDeleteUser()
 
-  useEffect(() => {
-    if (user?.role.name !== 'admin') {
-      router.push('/dashboard')
-    }
-  }, [user, router])
-
   const handleCreateUser = async (data: any) => {
     try {
-      await createUser.mutateAsync(data)
-      setDialogOpen(false)
+      await createUser.mutateAsync(data);
+      setDialogOpen(false);
     } catch (error) {
-      console.error('Failed to create user:', error)
+      console.error("Failed to create user:", error);
     }
-  }
+  };
 
   const handleUpdateUser = async (data: any) => {
     try {
-      await updateUser.mutateAsync({ id: selectedUser.id, ...data })
-      setDialogOpen(false)
-      setSelectedUser(null)
+      if (selectedUser) {
+        await updateUser.mutateAsync({ id: selectedUser.id, ...data });
+        setDialogOpen(false);
+        setSelectedUser(null);
+      }
     } catch (error) {
-      console.error('Failed to update user:', error)
+      console.error("Failed to update user:", error);
     }
-  }
+  };
 
   const handleDeleteUser = async (id: string) => {
-    if (confirm('Are you sure you want to delete this user?')) {
+    if (confirm("Are you sure you want to delete this user?")) {
       try {
-        await deleteUser.mutateAsync(id)
+        await deleteUser.mutateAsync(id);
       } catch (error) {
-        console.error('Failed to delete user:', error)
+        console.error("Failed to delete user:", error);
       }
     }
-  }
+  };
 
   const openEditDialog = (user: any) => {
-    setSelectedUser(user)
-    setDialogOpen(true)
-  }
+    setSelectedUser(user);
+    setDialogOpen(true);
+  };
 
   const openCreateDialog = () => {
-    setSelectedUser(null)
-    setDialogOpen(true)
-  }
+    setSelectedUser(null);
+    setDialogOpen(true);
+  };
 
-  if (user?.role.name !== 'admin') {
-    return null
-  }
+  const columns: ColumnDef<User>[] = [
+    {
+      accessorKey: 'username',
+      header: 'Username',
+      cell: ({ row }) => (
+        <div className="font-medium">{row.getValue('username')}</div>
+      ),
+    },
+    {
+      accessorKey: 'email',
+      header: 'Email',
+    },
+    {
+      accessorKey: 'role.name',
+      header: 'Role',
+      cell: ({ row }) => (
+        <Badge variant="secondary">{row.original.role.name}</Badge>
+      ),
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Created',
+      cell: ({ row }) => (
+        <div>{new Date(row.getValue('createdAt')).toLocaleDateString()}</div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const user = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleDeleteUser(user.id)}
+                className="text-destructive"
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ];
 
   return (
     <DashboardLayout>
@@ -82,19 +135,25 @@ export default function UsersPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+              <h1 className="text-3xl font-bold tracking-tight">
+                User Management
+              </h1>
               <p className="text-muted-foreground">
                 Manage system users and their roles.
               </p>
             </div>
-            
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
+            <Modal
+              isOpen={dialogOpen}
+              onOpenChange={setDialogOpen}
+              title={selectedUser ? 'Edit User' : 'Create User'}
+              description={selectedUser ? 'Make changes to the user account here.' : 'Add a new user to the system.'}
+              trigger={
                 <Button onClick={openCreateDialog}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add User
                 </Button>
-              </DialogTrigger>
+              }
+            >
               <ErrorBoundary>
                 <UserForm
                   user={selectedUser}
@@ -102,67 +161,26 @@ export default function UsersPage() {
                   isLoading={createUser.isPending || updateUser.isPending}
                 />
               </ErrorBoundary>
-            </Dialog>
+            </Modal>
           </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div>Loading users...</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="w-[70px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user: any) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.username}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{user.role.name}</Badge>
-                      </TableCell>
-                      <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(user)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="text-destructive"
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                columns={columns}
+                data={users}
+                isLoading={isLoading}
+                searchPlaceholder="Search users..."
+                emptyMessage="No users found."
+                pageSize={10}
+              />
+            </CardContent>
+          </Card>
         </div>
       </ErrorBoundary>
     </DashboardLayout>
-  )
+  );
 }

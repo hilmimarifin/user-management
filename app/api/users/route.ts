@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
-import { withAdminAuth } from '@/lib/auth-middleware'
+import { withReadPermission, withWritePermission } from '@/lib/auth-middleware'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
-export const GET = withAdminAuth(async (req: NextRequest) => {
+export const GET = withReadPermission('/users', async (req: NextRequest) => {
   try {
     const users = await prisma.user.findMany({
       include: {
@@ -16,16 +17,16 @@ export const GET = withAdminAuth(async (req: NextRequest) => {
 
     const safeUsers = users.map(({ password, ...user }) => user)
 
-    return NextResponse.json(safeUsers)
+    return NextResponse.json(createSuccessResponse(safeUsers, 'Users fetched successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to fetch users' },
+      createErrorResponse('Failed to fetch users', 'Internal server error'),
       { status: 500 }
     )
   }
 })
 
-export const POST = withAdminAuth(async (req: NextRequest) => {
+export const POST = withWritePermission('/users', async (req: NextRequest) => {
   try {
     const { email, username, password, roleId } = await req.json()
 
@@ -38,7 +39,7 @@ export const POST = withAdminAuth(async (req: NextRequest) => {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User already exists' },
+        createErrorResponse('User with this email or username already exists', 'Validation error'),
         { status: 400 }
       )
     }
@@ -59,10 +60,10 @@ export const POST = withAdminAuth(async (req: NextRequest) => {
 
     const { password: _, ...safeUser } = user
 
-    return NextResponse.json(safeUser)
+    return NextResponse.json(createSuccessResponse(safeUser, 'User created successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to create user' },
+      createErrorResponse('Failed to create user', 'Internal server error'),
       { status: 500 }
     )
   }

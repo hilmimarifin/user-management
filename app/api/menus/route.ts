@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdminAuth, withAuth } from '@/lib/auth-middleware'
+import { withReadPermission, withWritePermission } from '@/lib/auth-middleware'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
-export const GET = withAuth(async (req: NextRequest, user: any) => {
+export const GET = withReadPermission('/menus', async (req: NextRequest, user: any) => {
   try {
     const { searchParams } = new URL(req.url)
     const forUser = searchParams.get('forUser') === 'true'
@@ -37,8 +38,11 @@ export const GET = withAuth(async (req: NextRequest, user: any) => {
       include: { role: true }
     })
 
-    if (adminUser?.role.name !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (adminUser?.role.name !== 'Super admin') {
+      return NextResponse.json(
+        createErrorResponse('Admin access required', 'Admin access required'),
+        { status: 403 }
+      )
     }
 
     const menus = await prisma.menu.findMany({
@@ -51,16 +55,16 @@ export const GET = withAuth(async (req: NextRequest, user: any) => {
       }
     })
 
-    return NextResponse.json(menus)
+    return NextResponse.json(createSuccessResponse(menus, 'Menus fetched successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to fetch menus' },
+      createErrorResponse('Failed to fetch menus', 'Internal server error'),
       { status: 500 }
     )
   }
 })
 
-export const POST = withAdminAuth(async (req: NextRequest) => {
+export const POST = withWritePermission('/menus', async (req: NextRequest) => {
   try {
     const { name, path, icon, parentId, orderIndex } = await req.json()
 
@@ -74,10 +78,10 @@ export const POST = withAdminAuth(async (req: NextRequest) => {
       }
     })
 
-    return NextResponse.json(menu)
+    return NextResponse.json(createSuccessResponse(menu, 'Menu created successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to create menu' },
+      createErrorResponse('Failed to create menu', 'Internal server error'),
       { status: 500 }
     )
   }

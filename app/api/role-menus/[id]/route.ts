@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdminAuth } from '@/lib/auth-middleware'
+import { withDeletePermission } from '@/lib/auth-middleware'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
-export const DELETE = withAdminAuth(async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
+export const DELETE = withDeletePermission('/role-menus', async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
   try {
     const { id } = params
 
@@ -10,10 +11,10 @@ export const DELETE = withAdminAuth(async (req: NextRequest, user: any, { params
       where: { id }
     })
 
-    return NextResponse.json({ message: 'Role menu assignment deleted successfully' })
+    return NextResponse.json(createSuccessResponse(null, 'Role menu assignment deleted successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to delete role menu assignment' },
+      createErrorResponse('Failed to delete role menu assignment', 'Internal server error'),
       { status: 500 }
     )
   }

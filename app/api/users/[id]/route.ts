@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
-import { withAdminAuth } from '@/lib/auth-middleware'
+import { withUpdatePermission, withDeletePermission } from '@/lib/auth-middleware'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
-export const PUT = withAdminAuth(async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
+export const PUT = withUpdatePermission('/users', async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
   try {
     const { email, username, password, roleId } = await req.json()
     const { id } = params
@@ -28,16 +29,16 @@ export const PUT = withAdminAuth(async (req: NextRequest, user: any, { params }:
 
     const { password: _, ...safeUser } = updatedUser
 
-    return NextResponse.json(safeUser)
+    return NextResponse.json(createSuccessResponse(safeUser, 'User updated successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to update user' },
+      createErrorResponse('Failed to update user', 'Internal server error'),
       { status: 500 }
     )
   }
 })
 
-export const DELETE = withAdminAuth(async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
+export const DELETE = withDeletePermission('/users', async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
   try {
     const { id } = params
 
@@ -45,10 +46,10 @@ export const DELETE = withAdminAuth(async (req: NextRequest, user: any, { params
       where: { id }
     })
 
-    return NextResponse.json({ message: 'User deleted successfully' })
+    return NextResponse.json(createSuccessResponse(null, 'User deleted successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to delete user' },
+      createErrorResponse('Failed to delete user', 'Internal server error'),
       { status: 500 }
     )
   }

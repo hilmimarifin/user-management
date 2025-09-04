@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdminAuth } from '@/lib/auth-middleware'
+import { withReadPermission, withWritePermission, withUpdatePermission } from '@/lib/auth-middleware'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
-export const GET = withAdminAuth(async (req: NextRequest) => {
+export const GET = withReadPermission('/role-menus', async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url)
     const roleId = searchParams.get('roleId')
@@ -15,16 +16,16 @@ export const GET = withAdminAuth(async (req: NextRequest) => {
       }
     })
 
-    return NextResponse.json(roleMenus)
+    return NextResponse.json(createSuccessResponse(roleMenus, 'Role menus fetched successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to fetch role menus' },
+      createErrorResponse('Failed to fetch role menus', 'Internal server error'),
       { status: 500 }
     )
   }
 })
 
-export const POST = withAdminAuth(async (req: NextRequest) => {
+export const POST = withWritePermission('/role-menus', async (req: NextRequest) => {
   try {
     const { roleId, menuId, canRead, canWrite, canUpdate, canDelete } = await req.json()
 
@@ -55,10 +56,48 @@ export const POST = withAdminAuth(async (req: NextRequest) => {
       }
     })
 
-    return NextResponse.json(roleMenu)
+    return NextResponse.json(createSuccessResponse(roleMenu, 'Role menu permission assigned successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to assign menu to role' },
+      createErrorResponse('Failed to assign menu to role', 'Internal server error'),
+      { status: 500 }
+    )
+  }
+})
+
+export const PUT = withUpdatePermission('/role-menus', async (req: NextRequest) => {
+  try {
+    const { roleId, permissions } = await req.json()
+
+    // Delete existing permissions for this role
+    await prisma.roleMenu.deleteMany({
+      where: { roleId }
+    })
+
+    // Create new permissions
+    const roleMenus = await Promise.all(
+      permissions.map((permission: any) =>
+        prisma.roleMenu.create({
+          data: {
+            roleId,
+            menuId: permission.menuId,
+            canRead: permission.canRead || false,
+            canWrite: permission.canWrite || false,
+            canUpdate: permission.canUpdate || false,
+            canDelete: permission.canDelete || false
+          },
+          include: {
+            role: true,
+            menu: true
+          }
+        })
+      )
+    )
+
+    return NextResponse.json(createSuccessResponse(roleMenus, 'Role permissions updated successfully'))
+  } catch (error) {
+    return NextResponse.json(
+      createErrorResponse('Failed to update role permissions', 'Internal server error'),
       { status: 500 }
     )
   }

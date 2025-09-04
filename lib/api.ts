@@ -1,76 +1,89 @@
 import { useAuthStore } from '@/store/auth-store'
+import { ApiResponse } from './api-response'
 
 class ApiClient {
-  private baseURL = '/api'
+  private baseURL: string
 
-  private async request(endpoint: string, options: RequestInit = {}) {
-    const { accessToken } = useAuthStore.getState()
-    
+  constructor(baseURL: string = '/api') {
+    this.baseURL = baseURL
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
+    
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
-        ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
         ...options.headers,
       },
       ...options,
     }
 
-    const response = await fetch(url, config)
-
-    if (response.status === 401) {
-      // Try to refresh token
-      const refreshResponse = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include'
-      })
-
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json()
-        useAuthStore.getState().setAuth(data.user, data.accessToken)
-        
-        // Retry original request with new token
+    // Add auth token if available
+    if (typeof window !== 'undefined') {
+      // Try to get token from Zustand persist storage first
+      const authStorage = localStorage.getItem('auth-storage')
+      let token = null
+      
+      if (authStorage) {
+        try {
+          const parsedAuth = JSON.parse(authStorage)
+          token = parsedAuth.state?.accessToken
+        } catch (e) {
+          // Fallback to direct localStorage access
+          token = localStorage.getItem('accessToken')
+        }
+      }
+      
+      if (token) {
         config.headers = {
           ...config.headers,
-          Authorization: `Bearer ${data.accessToken}`
+          Authorization: `Bearer ${token}`,
         }
-        return fetch(url, config)
-      } else {
-        useAuthStore.getState().logout()
-        window.location.href = '/login'
-        throw new Error('Authentication failed')
       }
     }
 
-    return response
+    const response = await fetch(url, config)
+    const result = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(result.error || result.message || 'Request failed')
+    }
+
+    // Return the data from the standardized API response
+    if (result.status === 'success') {
+      return result.data !== undefined ? result.data : result
+    }
+    
+    // For non-standardized responses, return as is
+    return result
   }
 
-  async get(endpoint: string) {
-    const response = await this.request(endpoint)
-    return response.json()
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint)
   }
 
-  async post(endpoint: string, data?: any) {
-    const response = await this.request(endpoint, {
+  async post<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     })
-    return response.json()
   }
 
-  async put(endpoint: string, data?: any) {
-    const response = await this.request(endpoint, {
+  async put<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     })
-    return response.json()
   }
 
-  async delete(endpoint: string) {
-    const response = await this.request(endpoint, {
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'DELETE',
     })
-    return response.json()
   }
 }
 

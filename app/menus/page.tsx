@@ -3,20 +3,24 @@
 import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { useMenus, useCreateMenu, useUpdateMenu, useDeleteMenu } from '@/hooks/use-menus'
+import { Menu as MenuType } from '@/types'
 import { MenuForm } from '@/components/forms/menu-form'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Modal } from '@/components/ui/modal'
+import { DataTable } from '@/components/ui/data-table'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Plus, Edit, Trash } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { ColumnDef } from '@tanstack/react-table'
+
+type Menu = MenuType
 
 export default function MenusPage() {
-  const [selectedMenu, setSelectedMenu] = useState<any>(null)
+  const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const { user } = useAuthStore()
   const router = useRouter()
@@ -26,11 +30,6 @@ export default function MenusPage() {
   const updateMenu = useUpdateMenu()
   const deleteMenu = useDeleteMenu()
 
-  useEffect(() => {
-    if (user?.role.name !== 'admin') {
-      router.push('/dashboard')
-    }
-  }, [user, router])
 
   const handleCreateMenu = async (data: any) => {
     try {
@@ -43,9 +42,11 @@ export default function MenusPage() {
 
   const handleUpdateMenu = async (data: any) => {
     try {
-      await updateMenu.mutateAsync({ id: selectedMenu.id, ...data })
-      setDialogOpen(false)
-      setSelectedMenu(null)
+      if (selectedMenu) {
+        await updateMenu.mutateAsync({ id: selectedMenu.id, ...data })
+        setDialogOpen(false)
+        setSelectedMenu(null)
+      }
     } catch (error) {
       console.error('Failed to update menu:', error)
     }
@@ -71,9 +72,70 @@ export default function MenusPage() {
     setDialogOpen(true)
   }
 
-  if (user?.role.name !== 'admin') {
-    return null
-  }
+  const columns: ColumnDef<Menu>[] = [
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }) => (
+        <div className="font-medium">{row.getValue('name')}</div>
+      ),
+    },
+    {
+      accessorKey: 'path',
+      header: 'Path',
+      cell: ({ row }) => (
+        <Badge variant="secondary">{row.getValue('path')}</Badge>
+      ),
+    },
+    {
+      accessorKey: 'icon',
+      header: 'Icon',
+      cell: ({ row }) => (
+        <div>{row.getValue('icon') || 'None'}</div>
+      ),
+    },
+    {
+      accessorKey: 'parent.name',
+      header: 'Parent',
+      cell: ({ row }) => (
+        <div>{row.original.parent?.name || 'Root'}</div>
+      ),
+    },
+    {
+      accessorKey: 'orderIndex',
+      header: 'Order',
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const menu = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEditDialog(menu)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleDeleteMenu(menu.id)}
+                className="text-destructive"
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ]
+
 
   return (
     <DashboardLayout>
@@ -86,19 +148,24 @@ export default function MenusPage() {
             </p>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
+          <Modal
+            isOpen={dialogOpen}
+            onOpenChange={setDialogOpen}
+            title={selectedMenu ? 'Edit Menu' : 'Create Menu'}
+            description={selectedMenu ? 'Make changes to the menu item here.' : 'Add a new menu item to the system.'}
+            trigger={
               <Button onClick={openCreateDialog}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Menu
               </Button>
-            </DialogTrigger>
+            }
+          >
             <MenuForm
               menu={selectedMenu}
               onSubmit={selectedMenu ? handleUpdateMenu : handleCreateMenu}
               isLoading={createMenu.isPending || updateMenu.isPending}
             />
-          </Dialog>
+          </Modal>
         </div>
 
         <Card>
@@ -106,57 +173,14 @@ export default function MenusPage() {
             <CardTitle>Menu Items</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div>Loading menus...</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Path</TableHead>
-                    <TableHead>Icon</TableHead>
-                    <TableHead>Parent</TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead className="w-[70px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {menus.map((menu: any) => (
-                    <TableRow key={menu.id}>
-                      <TableCell className="font-medium">{menu.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{menu.path}</Badge>
-                      </TableCell>
-                      <TableCell>{menu.icon || 'None'}</TableCell>
-                      <TableCell>{menu.parent?.name || 'Root'}</TableCell>
-                      <TableCell>{menu.orderIndex}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(menu)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteMenu(menu.id)}
-                              className="text-destructive"
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            <DataTable
+              columns={columns}
+              data={menus}
+              isLoading={isLoading}
+              searchPlaceholder="Search menus..."
+              emptyMessage="No menus found."
+              pageSize={10}
+            />
           </CardContent>
         </Card>
       </div>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useAuthStore } from '@/store/auth-store'
 import { apiClient } from '@/lib/api'
+import { useAuthStore } from '@/store/auth-store'
+import { LoginResponse, Menu } from '@/types'
 
 interface LoginData {
   email: string
@@ -17,23 +18,7 @@ export function useLogin() {
   const setAuth = useAuthStore((state) => state.setAuth)
 
   return useMutation({
-    mutationFn: async (data: LoginData) => {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Login failed')
-      }
-
-      return response.json()
-    },
+    mutationFn: (data: LoginData) => apiClient.post<LoginResponse>('/auth/login', data),
     onSuccess: (data) => {
       setAuth(data.user, data.accessToken)
     }
@@ -86,6 +71,6 @@ export function useLogout() {
 export function useUserMenus() {
   return useQuery({
     queryKey: ['user-menus'],
-    queryFn: () => apiClient.get('/menus?forUser=true'),
+    queryFn: () => apiClient.get<Menu[]>('/menus?forUser=true'),
   })
 }

@@ -10,9 +10,9 @@ import { Users, UserCheck, Menu, BarChart3 } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
-  const { data: users = [] } = useUsers()
-  const { data: roles = [] } = useRoles()
-  const { data: menus = [] } = useMenus()
+  const { data: users = [], isLoading: usersLoading } = useUsers()
+  const { data: roles = [], isLoading: rolesLoading } = useRoles()
+  const { data: menus = [], isLoading: menusLoading } = useMenus()
 
   const isAdmin = user?.role.name === 'admin'
 
@@ -22,7 +22,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.username}!</h1>
           <p className="text-muted-foreground">
-            Here's what's happening in your system today.
+            Here&apos;s what&apos;s happening in your system today.
           </p>
         </div>
 
@@ -34,7 +34,7 @@ export default function DashboardPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{users.length}</div>
+                <div className="text-2xl font-bold">{usersLoading ? '...' : (users as any[])?.length || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   Active user accounts
                 </p>
@@ -47,7 +47,7 @@ export default function DashboardPage() {
                 <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{roles.length}</div>
+                <div className="text-2xl font-bold">{rolesLoading ? '...' : (roles as any[])?.length || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   System roles
                 </p>
@@ -60,7 +60,7 @@ export default function DashboardPage() {
                 <Menu className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{menus.length}</div>
+                <div className="text-2xl font-bold">{menusLoading ? '...' : (menus as any[])?.length || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   Navigation items
                 </p>

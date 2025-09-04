@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdminAuth } from '@/lib/auth-middleware'
+import { withUpdatePermission, withDeletePermission } from '@/lib/auth-middleware'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
-export const PUT = withAdminAuth(async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
+export const PUT = withUpdatePermission('/roles', async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
   try {
     const { name, description } = await req.json()
     const { id } = params
@@ -15,16 +16,16 @@ export const PUT = withAdminAuth(async (req: NextRequest, user: any, { params }:
       }
     })
 
-    return NextResponse.json(role)
+    return NextResponse.json(createSuccessResponse(role, 'Role updated successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to update role' },
+      createErrorResponse('Failed to update role', 'Internal server error'),
       { status: 500 }
     )
   }
 })
 
-export const DELETE = withAdminAuth(async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
+export const DELETE = withDeletePermission('/roles', async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
   try {
     const { id } = params
 
@@ -36,7 +37,7 @@ export const DELETE = withAdminAuth(async (req: NextRequest, user: any, { params
 
     if (roleWithUsers?._count.users && roleWithUsers._count.users > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete role with assigned users' },
+        createErrorResponse('Cannot delete role with assigned users', 'Validation error'),
         { status: 400 }
       )
     }
@@ -45,10 +46,10 @@ export const DELETE = withAdminAuth(async (req: NextRequest, user: any, { params
       where: { id }
     })
 
-    return NextResponse.json({ message: 'Role deleted successfully' })
+    return NextResponse.json(createSuccessResponse(null, 'Role deleted successfully'))
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to delete role' },
+      createErrorResponse('Failed to delete role', 'Internal server error'),
       { status: 500 }
     )
   }

@@ -27,10 +27,86 @@ export function withAdminAuth(handler: (req: NextRequest, user: any, context?: a
       include: { role: true }
     })
 
-    if (userWithRole?.role.name !== 'admin') {
+    if (userWithRole?.role.name !== 'Super admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
     return handler(req, user, context)
   })
+}
+
+type PermissionType = 'canRead' | 'canWrite' | 'canUpdate' | 'canDelete'
+
+export function withPermission(
+  menuPath: string, 
+  permission: PermissionType,
+  handler: (req: NextRequest, user: any, context?: any) => Promise<NextResponse>
+) {
+  return withAuth(async (req: NextRequest, user: any, context?: any) => {
+    try {
+      const { prisma } = await import('./prisma')
+      
+      // Get user with role
+      const userWithRole = await prisma.user.findUnique({
+        where: { id: user.userId },
+        include: { role: true }
+      })
+
+      if (!userWithRole) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+
+      // Super admin bypass - has all permissions
+      if (userWithRole.role.name === 'Super admin') {
+        return handler(req, user, context)
+      }
+
+      // Find menu by path
+      const menu = await prisma.menu.findUnique({
+        where: { path: menuPath }
+      })
+
+      if (!menu) {
+        return NextResponse.json({ error: 'Menu not found' }, { status: 404 })
+      }
+
+      // Check role-menu permission
+      const roleMenu = await prisma.roleMenu.findUnique({
+        where: {
+          roleId_menuId: {
+            roleId: userWithRole.roleId,
+            menuId: menu.id
+          }
+        }
+      })
+
+      if (!roleMenu || !roleMenu[permission]) {
+        return NextResponse.json({ 
+          error: `Insufficient permissions. Required: ${permission} on ${menuPath}` 
+        }, { status: 403 })
+      }
+
+      return handler(req, user, context)
+    } catch (error) {
+      console.error('Permission check error:', error)
+      return NextResponse.json({ error: 'Permission check failed' }, { status: 500 })
+    }
+  })
+}
+
+// Convenience functions for common permission patterns
+export function withReadPermission(menuPath: string, handler: (req: NextRequest, user: any, context?: any) => Promise<NextResponse>) {
+  return withPermission(menuPath, 'canRead', handler)
+}
+
+export function withWritePermission(menuPath: string, handler: (req: NextRequest, user: any, context?: any) => Promise<NextResponse>) {
+  return withPermission(menuPath, 'canWrite', handler)
+}
+
+export function withUpdatePermission(menuPath: string, handler: (req: NextRequest, user: any, context?: any) => Promise<NextResponse>) {
+  return withPermission(menuPath, 'canUpdate', handler)
+}
+
+export function withDeletePermission(menuPath: string, handler: (req: NextRequest, user: any, context?: any) => Promise<NextResponse>) {
+  return withPermission(menuPath, 'canDelete', handler)
 }

@@ -1,36 +1,34 @@
 'use client'
 
-import { useState } from 'react'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { useRoles, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-roles'
 import { RoleForm } from '@/components/forms/role-form'
+import { PermissionModal } from '@/components/forms/permission-modal'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { Modal } from '@/components/ui/modal'
+import { DataTable } from '@/components/ui/data-table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Plus, Edit, Trash } from 'lucide-react'
-import { useAuthStore } from '@/store/auth-store'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useCreateRole, useDeleteRole, useRoles, useUpdateRole } from '@/hooks/use-roles'
+import { Edit, MoreHorizontal, Plus, Trash, Shield } from 'lucide-react'
+import { useState } from 'react'
+import { ColumnDef } from '@tanstack/react-table'
+
+import { Role as RoleType } from '@/types'
+
+type Role = RoleType
 
 export default function RolesPage() {
-  const [selectedRole, setSelectedRole] = useState<any>(null)
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const { user } = useAuthStore()
-  const router = useRouter()
+  const [permissionModalOpen, setPermissionModalOpen] = useState(false)
+  const [selectedRoleForPermissions, setSelectedRoleForPermissions] = useState<Role | null>(null)
 
-  const { data: roles = [], isLoading } = useRoles()
+  const { data: roles = [], isLoading, error } = useRoles()
   const createRole = useCreateRole()
   const updateRole = useUpdateRole()
   const deleteRole = useDeleteRole()
 
-  useEffect(() => {
-    if (user?.role.name !== 'admin') {
-      router.push('/dashboard')
-    }
-  }, [user, router])
 
   const handleCreateRole = async (data: any) => {
     try {
@@ -43,9 +41,11 @@ export default function RolesPage() {
 
   const handleUpdateRole = async (data: any) => {
     try {
-      await updateRole.mutateAsync({ id: selectedRole.id, ...data })
-      setDialogOpen(false)
-      setSelectedRole(null)
+      if (selectedRole) {
+        await updateRole.mutateAsync({ id: selectedRole.id, ...data })
+        setDialogOpen(false)
+        setSelectedRole(null)
+      }
     } catch (error) {
       console.error('Failed to update role:', error)
     }
@@ -71,34 +71,106 @@ export default function RolesPage() {
     setDialogOpen(true)
   }
 
-  if (user?.role.name !== 'admin') {
-    return null
+  const openPermissionModal = (role: Role) => {
+    setSelectedRoleForPermissions(role)
+    setPermissionModalOpen(true)
   }
+
+  const columns: ColumnDef<Role>[] = [
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }) => (
+        <Badge variant="outline">{row.getValue('name')}</Badge>
+      ),
+    },
+    {
+      accessorKey: 'description',
+      header: 'Description',
+      cell: ({ row }) => (
+        <div>{row.getValue('description') || 'No description'}</div>
+      ),
+    },
+    {
+      accessorKey: '_count.users',
+      header: 'Users',
+      cell: ({ row }) => row.original._count?.users || 0,
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Created',
+      cell: ({ row }) => (
+        <div>{new Date(row.getValue('createdAt')).toLocaleDateString()}</div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const role = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEditDialog(role)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openPermissionModal(role)}>
+                <Shield className="mr-2 h-4 w-4" />
+                Permissions
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleDeleteRole(role.id)}
+                className="text-destructive"
+                disabled={(role._count?.users || 0) > 0}
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ]
+
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Role Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Role Management
+            </h1>
             <p className="text-muted-foreground">
               Create and manage system roles and permissions.
             </p>
           </div>
-          
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
+
+          <Modal
+            isOpen={dialogOpen}
+            onOpenChange={setDialogOpen}
+            title={selectedRole ? 'Edit Role' : 'Create Role'}
+            description={selectedRole ? 'Make changes to the role here.' : 'Add a new role to the system.'}
+            trigger={
               <Button onClick={openCreateDialog}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Role
               </Button>
-            </DialogTrigger>
+            }
+          >
             <RoleForm
               role={selectedRole}
               onSubmit={selectedRole ? handleUpdateRole : handleCreateRole}
               isLoading={createRole.isPending || updateRole.isPending}
             />
-          </Dialog>
+          </Modal>
         </div>
 
         <Card>
@@ -106,59 +178,24 @@ export default function RolesPage() {
             <CardTitle>Roles</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div>Loading roles...</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Users</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="w-[70px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {roles.map((role: any) => (
-                    <TableRow key={role.id}>
-                      <TableCell className="font-medium">
-                        <Badge variant="outline">{role.name}</Badge>
-                      </TableCell>
-                      <TableCell>{role.description || 'No description'}</TableCell>
-                      <TableCell>{role._count.users}</TableCell>
-                      <TableCell>{new Date(role.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(role)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteRole(role.id)}
-                              className="text-destructive"
-                              disabled={role._count.users > 0}
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            <DataTable
+              columns={columns}
+              data={roles}
+              isLoading={isLoading}
+              searchPlaceholder="Search roles..."
+              emptyMessage="No roles found."
+              pageSize={10}
+            />
           </CardContent>
         </Card>
       </div>
+
+      {/* Permission Modal */}
+      <PermissionModal
+        isOpen={permissionModalOpen}
+        onOpenChange={setPermissionModalOpen}
+        role={selectedRoleForPermissions}
+      />
     </DashboardLayout>
-  )
+  );
 }

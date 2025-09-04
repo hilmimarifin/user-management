@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface RoleFormProps {
   role?: any
@@ -34,43 +33,34 @@ export function RoleForm({ role, onSubmit, isLoading }: RoleFormProps) {
   }
 
   return (
-    <DialogContent className="sm:max-w-[425px]">
-      <DialogHeader>
-        <DialogTitle>{role ? 'Edit Role' : 'Create Role'}</DialogTitle>
-        <DialogDescription>
-          {role ? 'Make changes to the role here.' : 'Add a new role to the system.'}
-        </DialogDescription>
-      </DialogHeader>
-      
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Role Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Enter role description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
+    <form onSubmit={handleSubmit}>
+      <div className="grid gap-4 py-4">
+        <div className="grid gap-2">
+          <Label htmlFor="name">Role Name</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
         </div>
         
-        <DialogFooter>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Saving...' : role ? 'Update Role' : 'Create Role'}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
+        <div className="grid gap-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            placeholder="Enter role description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          />
+        </div>
+      </div>
+      
+      <div className="flex justify-end">
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Saving...' : role ? 'Update Role' : 'Create Role'}
+        </Button>
+      </div>
+    </form>
   )
 }
