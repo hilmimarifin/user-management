@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
         username: user.username,
         role: user.role
       },
-      accessToken
+      accessToken,
+      refreshToken
     }, 'Login successful'))
 
     // Set refresh token as httpOnly cookie

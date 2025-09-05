@@ -53,4 +53,5 @@ export interface RoleMenu {
 export interface LoginResponse {
   user: User
   accessToken: string
+  refreshToken?: string
 }

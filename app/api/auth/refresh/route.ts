@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyRefreshToken, generateTokens } from '@/lib/jwt'
 import { prisma } from '@/lib/prisma'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     if (!refreshToken) {
       return NextResponse.json(
-        { error: 'Refresh token not found' },
+        createErrorResponse('Refresh token not found'),
         { status: 401 }
       )
     }
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        createErrorResponse('User not found'),
         { status: 401 }
       )
     }
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       roleId: user.roleId
     })
 
-    const response = NextResponse.json({
+    const responseData = {
       user: {
         id: user.id,
         email: user.email,
@@ -43,7 +44,11 @@ export async function POST(request: NextRequest) {
         role: user.role
       },
       accessToken
-    })
+    }
+
+    const response = NextResponse.json(
+      createSuccessResponse(responseData, 'Token refreshed successfully')
+    )
 
     // Set new refresh token
     response.cookies.set('refreshToken', newRefreshToken, {
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Refresh error:', error)
     return NextResponse.json(
-      { error: 'Invalid refresh token' },
+      createErrorResponse('Invalid refresh token'),
       { status: 401 }
     )
   }

@@ -69,17 +69,18 @@ export function withPermission(
       if (!menu) {
         return NextResponse.json({ error: 'Menu not found' }, { status: 404 })
       }
-
+      console.log("MENU", menu.id)
+      console.log("USERWITHROLE", userWithRole.roleId)
       // Check role-menu permission
-      const roleMenu = await prisma.roleMenu.findUnique({
+      const roleMenu = await prisma.roleMenu.findFirst({
         where: {
-          roleId_menuId: {
-            roleId: userWithRole.roleId,
-            menuId: menu.id
-          }
+          AND: [
+            { roleId: userWithRole.roleId },
+            { menuId: menu.id }
+          ]
         }
       })
-
+      console.log("ROLEMENU", roleMenu)
       if (!roleMenu || !roleMenu[permission]) {
         return NextResponse.json({ 
           error: `Insufficient permissions. Required: ${permission} on ${menuPath}` 

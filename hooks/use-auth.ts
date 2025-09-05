@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/store/auth-store'
 import { LoginResponse, Menu } from '@/types'
+import { showToast } from '@/lib/toast'
 
 interface LoginData {
   email: string
@@ -20,7 +21,11 @@ export function useLogin() {
   return useMutation({
     mutationFn: (data: LoginData) => apiClient.post<LoginResponse>('/auth/login', data),
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken)
+      setAuth(data.user, data.accessToken, data.refreshToken)
+      showToast.success('Login successful', `Welcome back, ${data.user.username}!`)
+    },
+    onError: (error: any) => {
+      showToast.error('Login failed', error.message || 'Please check your credentials')
     }
   })
 }
@@ -47,7 +52,11 @@ export function useRegister() {
       return response.json()
     },
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken)
+      setAuth(data.user, data.accessToken, data.refreshToken)
+      showToast.success('Registration successful', `Welcome, ${data.user.username}!`)
+    },
+    onError: (error: any) => {
+      showToast.error('Registration failed', error.message || 'Please try again')
     }
   })
 }
@@ -64,6 +73,10 @@ export function useLogout() {
     },
     onSuccess: () => {
       logout()
+      showToast.success('Logged out successfully', 'See you next time!')
+    },
+    onError: (error: any) => {
+      showToast.error('Logout failed', error.message || 'Please try again')
     }
   })
 }

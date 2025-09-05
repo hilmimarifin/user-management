@@ -10,11 +10,11 @@ import { Users, UserCheck, Menu, BarChart3 } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
-  const { data: users = [], isLoading: usersLoading } = useUsers()
-  const { data: roles = [], isLoading: rolesLoading } = useRoles()
-  const { data: menus = [], isLoading: menusLoading } = useMenus()
+  // const { data: users = [], isLoading: usersLoading } = useUsers()
+  // const { data: roles = [], isLoading: rolesLoading } = useRoles()
+  // const { data: menus = [], isLoading: menusLoading } = useMenus()
 
-  const isAdmin = user?.role.name === 'admin'
+  const isAdmin = user?.role.name === 'Super admin'
 
   return (
     <DashboardLayout>
@@ -26,7 +26,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {isAdmin && (
+        {/* {isAdmin && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -81,7 +81,7 @@ export default function DashboardPage() {
             </Card>
           </div>
         )}
-
+ */}
         <Card>
           <CardHeader>
             <CardTitle>System Overview</CardTitle>

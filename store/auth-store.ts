@@ -8,15 +8,17 @@ interface User {
   role: {
     id: string
     name: string
-    description?: string
+    description?: string | null
   }
 }
 
 interface AuthState {
   user: User | null
   accessToken: string | null
+  refreshToken: string | null
   isAuthenticated: boolean
-  setAuth: (user: User, accessToken: string) => void
+  setAuth: (user: User, accessToken: string, refreshToken?: string) => void
+  updateTokens: (accessToken: string, refreshToken?: string) => void
   logout: () => void
 }
 
@@ -25,17 +27,26 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
+      refreshToken: null,
       isAuthenticated: false,
-      setAuth: (user, accessToken) =>
+      setAuth: (user, accessToken, refreshToken) =>
         set({
           user,
           accessToken,
+          refreshToken,
           isAuthenticated: true
         }),
+      updateTokens: (accessToken, refreshToken) =>
+        set((state) => ({
+          ...state,
+          accessToken,
+          refreshToken: refreshToken || state.refreshToken
+        })),
       logout: () =>
         set({
           user: null,
           accessToken: null,
+          refreshToken: null,
           isAuthenticated: false
         })
     }),

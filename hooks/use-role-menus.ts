@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 import { RoleMenu } from '@/types'
+import { showToast } from '@/lib/toast'
 
 export interface RoleMenuPermission {
   id?: string
@@ -42,7 +43,11 @@ export function useUpdateRolePermissions() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['role-menus'] })
       queryClient.invalidateQueries({ queryKey: ['role-menus', variables.roleId] })
+      showToast.success('Permissions updated successfully', 'Role permissions have been updated')
     },
+    onError: (error: any) => {
+      showToast.error('Failed to update permissions', error.message || 'Please try again')
+    }
   })
 }
 
@@ -56,7 +61,11 @@ export function useCreateRoleMenu() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['role-menus'] })
+      showToast.success('Role menu created successfully', 'New role menu permission has been added')
     },
+    onError: (error: any) => {
+      showToast.error('Failed to create role menu', error.message || 'Please try again')
+    }
   })
 }
 
@@ -70,6 +79,10 @@ export function useDeleteRoleMenu() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['role-menus'] })
+      showToast.success('Role menu deleted successfully', 'Role menu permission has been removed')
     },
+    onError: (error: any) => {
+      showToast.error('Failed to delete role menu', error.message || 'Please try again')
+    }
   })
 }

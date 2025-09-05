@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ReactQueryProvider } from '@/lib/react-query'
+import { Toaster } from '@/components/ui/toaster'
 import { Suspense } from 'react'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -23,6 +24,7 @@ export default function RootLayout({
           <Suspense fallback={<div>Loading...</div>}>
             {children}
           </Suspense>
+          <Toaster />
         </ReactQueryProvider>
       </body>
     </html>
