@@ -13,6 +13,7 @@ import { useCreateRole, useDeleteRole, useRoles, useUpdateRole } from '@/hooks/u
 import { Edit, MoreHorizontal, Plus, Trash, Shield } from 'lucide-react'
 import { useState } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
+import { usePermissionGuard } from '@/hooks/use-permissions'
 
 import { Role as RoleType } from '@/types'
 
@@ -28,6 +29,9 @@ export default function RolesPage() {
   const createRole = useCreateRole()
   const updateRole = useUpdateRole()
   const deleteRole = useDeleteRole()
+  
+  // Permission checks for /roles path
+  const { showAddButton, showEditButton, showDeleteButton, canUpdate, isLoading: permissionsLoading } = usePermissionGuard('/roles')
 
 
   const handleCreateRole = async (data: any) => {
@@ -116,22 +120,28 @@ export default function RolesPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEditDialog(role)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openPermissionModal(role)}>
-                <Shield className="mr-2 h-4 w-4" />
-                Permissions
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDeleteRole(role.id)}
-                className="text-destructive"
-                disabled={(role._count?.users || 0) > 0}
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
+              {showEditButton && (
+                <DropdownMenuItem onClick={() => openEditDialog(role)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {canUpdate && (
+                <DropdownMenuItem onClick={() => openPermissionModal(role)}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Permissions
+                </DropdownMenuItem>
+              )}
+              {showDeleteButton && (
+                <DropdownMenuItem
+                  onClick={() => handleDeleteRole(role.id)}
+                  className="text-destructive"
+                  disabled={(role._count?.users || 0) > 0}
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -153,24 +163,26 @@ export default function RolesPage() {
             </p>
           </div>
 
-          <Modal
-            isOpen={dialogOpen}
-            onOpenChange={setDialogOpen}
-            title={selectedRole ? 'Edit Role' : 'Create Role'}
-            description={selectedRole ? 'Make changes to the role here.' : 'Add a new role to the system.'}
-            trigger={
-              <Button onClick={openCreateDialog}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Role
-              </Button>
-            }
-          >
-            <RoleForm
-              role={selectedRole}
-              onSubmit={selectedRole ? handleUpdateRole : handleCreateRole}
-              isLoading={createRole.isPending || updateRole.isPending}
-            />
-          </Modal>
+          {showAddButton && (
+            <Modal
+              isOpen={dialogOpen}
+              onOpenChange={setDialogOpen}
+              title={selectedRole ? 'Edit Role' : 'Create Role'}
+              description={selectedRole ? 'Make changes to the role here.' : 'Add a new role to the system.'}
+              trigger={
+                <Button onClick={openCreateDialog}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Role
+                </Button>
+              }
+            >
+              <RoleForm
+                role={selectedRole}
+                onSubmit={selectedRole ? handleUpdateRole : handleCreateRole}
+                isLoading={createRole.isPending || updateRole.isPending}
+              />
+            </Modal>
+          )}
         </div>
 
         <Card>

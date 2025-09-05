@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { ColumnDef } from '@tanstack/react-table'
+import { usePermissionGuard } from '@/hooks/use-permissions'
 
 type User = UserType
 
@@ -30,6 +31,9 @@ export default function UsersPage() {
   const createUser = useCreateUser()
   const updateUser = useUpdateUser()
   const deleteUser = useDeleteUser()
+  
+  // Permission checks for /users path
+  const { showAddButton, showEditButton, showDeleteButton, isLoading: permissionsLoading } = usePermissionGuard('/users')
 
   const handleCreateUser = async (data: any) => {
     try {
@@ -111,17 +115,21 @@ export default function UsersPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEditDialog(user)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => handleDeleteUser(user.id)}
-                className="text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
+              {showEditButton && (
+                <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {showDeleteButton && (
+                <DropdownMenuItem 
+                  onClick={() => handleDeleteUser(user.id)}
+                  className="text-destructive"
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -142,26 +150,28 @@ export default function UsersPage() {
                 Manage system users and their roles.
               </p>
             </div>
-            <Modal
-              isOpen={dialogOpen}
-              onOpenChange={setDialogOpen}
-              title={selectedUser ? 'Edit User' : 'Create User'}
-              description={selectedUser ? 'Make changes to the user account here.' : 'Add a new user to the system.'}
-              trigger={
-                <Button onClick={openCreateDialog}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add User
-                </Button>
-              }
-            >
-              <ErrorBoundary>
-                <UserForm
-                  user={selectedUser}
-                  onSubmit={selectedUser ? handleUpdateUser : handleCreateUser}
-                  isLoading={createUser.isPending || updateUser.isPending}
-                />
-              </ErrorBoundary>
-            </Modal>
+            {showAddButton && (
+              <Modal
+                isOpen={dialogOpen}
+                onOpenChange={setDialogOpen}
+                title={selectedUser ? 'Edit User' : 'Create User'}
+                description={selectedUser ? 'Make changes to the user account here.' : 'Add a new user to the system.'}
+                trigger={
+                  <Button onClick={openCreateDialog}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add User
+                  </Button>
+                }
+              >
+                <ErrorBoundary>
+                  <UserForm
+                    user={selectedUser}
+                    onSubmit={selectedUser ? handleUpdateUser : handleCreateUser}
+                    isLoading={createUser.isPending || updateUser.isPending}
+                  />
+                </ErrorBoundary>
+              </Modal>
+            )}
           </div>
 
           <Card>

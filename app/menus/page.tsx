@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
+import { usePermissionGuard } from '@/hooks/use-permissions'
 
 type Menu = MenuType
 
@@ -28,6 +29,9 @@ export default function MenusPage() {
   const { data: menus = [], isLoading } = useMenus()
   const createMenu = useCreateMenu()
   const updateMenu = useUpdateMenu()
+  
+  // Permission checks for /menus path
+  const { showAddButton, showEditButton, showDeleteButton, isLoading: permissionsLoading } = usePermissionGuard('/menus')
   const deleteMenu = useDeleteMenu()
 
 
@@ -118,17 +122,21 @@ export default function MenusPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEditDialog(menu)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => handleDeleteMenu(menu.id)}
-                className="text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
+              {showEditButton && (
+                <DropdownMenuItem onClick={() => openEditDialog(menu)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {showDeleteButton && (
+                <DropdownMenuItem 
+                  onClick={() => handleDeleteMenu(menu.id)}
+                  className="text-destructive"
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -148,24 +156,26 @@ export default function MenusPage() {
             </p>
           </div>
           
-          <Modal
-            isOpen={dialogOpen}
-            onOpenChange={setDialogOpen}
-            title={selectedMenu ? 'Edit Menu' : 'Create Menu'}
-            description={selectedMenu ? 'Make changes to the menu item here.' : 'Add a new menu item to the system.'}
-            trigger={
-              <Button onClick={openCreateDialog}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Menu
-              </Button>
-            }
-          >
-            <MenuForm
-              menu={selectedMenu}
-              onSubmit={selectedMenu ? handleUpdateMenu : handleCreateMenu}
-              isLoading={createMenu.isPending || updateMenu.isPending}
-            />
-          </Modal>
+          {showAddButton && (
+            <Modal
+              isOpen={dialogOpen}
+              onOpenChange={setDialogOpen}
+              title={selectedMenu ? 'Edit Menu' : 'Create Menu'}
+              description={selectedMenu ? 'Make changes to the menu item here.' : 'Add a new menu item to the system.'}
+              trigger={
+                <Button onClick={openCreateDialog}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Menu
+                </Button>
+              }
+            >
+              <MenuForm
+                menu={selectedMenu}
+                onSubmit={selectedMenu ? handleUpdateMenu : handleCreateMenu}
+                isLoading={createMenu.isPending || updateMenu.isPending}
+              />
+            </Modal>
+          )}
         </div>
 
         <Card>

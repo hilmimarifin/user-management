@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { createErrorResponse, createSuccessResponse } from '@/lib/api-response'
+import { withAuth, withUpdatePermission, withWritePermission } from '@/lib/auth-middleware'
 import { prisma } from '@/lib/prisma'
-import { withReadPermission, withWritePermission, withUpdatePermission } from '@/lib/auth-middleware'
-import { createSuccessResponse, createErrorResponse } from '@/lib/api-response'
+import { NextRequest, NextResponse } from 'next/server'
 
-export const GET = withReadPermission('/role-menus', async (req: NextRequest) => {
+export const GET = withAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url)
     const roleId = searchParams.get('roleId')
